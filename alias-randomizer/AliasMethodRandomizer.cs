@@ -1,12 +1,20 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 public class AliasMethodRandomizer {
-	private int[] alias;
-	private float[] probability;
+	private readonly int[] alias;
+	private readonly float[] probability;
+	private readonly Random random;
 
 	// O(n) time complexity, but only happens once upon initialization. Only need to re-initialize if weights (input probabilities) change.
 	public AliasMethodRandomizer(float[] inputProbabilities) {
+		if (inputProbabilities == null || inputProbabilities.Length == 0) {
+			throw new ArgumentException("Input probabilities array cannot be null or empty.", nameof(inputProbabilities));
+		}
+
+		random = new Random(Guid.NewGuid().GetHashCode());
+
 		probability = new float[inputProbabilities.Length];
 		alias = new int[inputProbabilities.Length];
 
@@ -54,12 +62,34 @@ public class AliasMethodRandomizer {
 		}
 	}
 
+	public AliasMethodRandomizer(int[] weights) : this(convertWeightsToProbabilities((weights))) {}
+
 	// O(1) time complexity.
 	public int next() {
-		var r = new Random(Guid.NewGuid().GetHashCode());
-		int column = r.Next(0, probability.Length);
-		bool coinToss = r.NextDouble() < probability[column];
+		int column = random.Next(0, probability.Length);
+		bool coinToss = random.NextDouble() < probability[column];
 
 		return coinToss ? column : alias[column];
+	}
+
+	private static float[] convertWeightsToProbabilities(int[] weights) {
+		if (weights == null || weights.Length == 0) {
+			throw new ArgumentException("Weights array cannot be null or empty.", nameof(weights));
+		}
+
+		float totalWeight = weights.Sum();
+		if (totalWeight <= 0) {
+			throw new ArgumentException("The sum of weights must be greater than zero.", nameof(weights));
+		}
+
+		float[] probabilities = new float[weights.Length];
+		for (int i = 0; i < probabilities.Length; i++) {
+			if (weights[i] < 0) {
+				throw new ArgumentException("Individual weights cannot be negative.", nameof(weights));
+			}
+			probabilities[i] = weights[i] / totalWeight;
+		}
+
+		return probabilities;
 	}
 }
